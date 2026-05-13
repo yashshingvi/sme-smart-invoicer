@@ -231,7 +231,7 @@ GSTIN structure used to infer state_code and determine intra- vs inter-state (CG
 
 **Phase-3 (post-POC)**:
 11. WhatsApp Business inbox — forward an invoice photo to a number, it lands in the app.
-12. Razorpay X integration — one-click pay-vendor from approved invoice.
+12. Payment gateway integration — one-click pay-vendor from approved invoice.
 13. Tally/Zoho Books direct sync.
 
 ## 7. Implementation Roadmap
@@ -265,7 +265,7 @@ Calibrated for one engineer, ~2 weeks to demo-able POC.
 | Per-invoice LLM cost at scale | Prompt caching for schema (90%+ savings); batch via Anthropic Batch API for non-realtime backlog |
 
 **Open questions for product**:
-- Is Razorpay X integration (pay vendor with one click) part of the POC demo, or a Phase-3 hook?
+- Is payment gateway integration (pay vendor with one click) part of the POC demo, or a Phase-3 hook?
 - Single-user POC or multi-user from day one?
 - Do we need a mobile capture flow, or is "WhatsApp forward to a number" sufficient for the mobile use case?
 
