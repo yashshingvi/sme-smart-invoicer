@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SME Smart Invoicer</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">SI</span>
+    <div>
+      <h1>Smart Invoicer</h1>
+      <p class="tagline">AI invoice management for Indian SMEs</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="inbox">Invoices</button>
+    <button class="tab" data-tab="vendors">Vendors</button>
+    <button class="tab" data-tab="upload">Upload</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============== DASHBOARD ============== -->
+  <section id="tab-dashboard" class="panel active">
+    <div class="cards">
+      <div class="card"><label>Total invoices</label><strong id="stat-total">—</strong></div>
+      <div class="card"><label>Total payable</label><strong id="stat-payable">—</strong></div>
+      <div class="card warning"><label>Overdue</label><strong id="stat-overdue">—</strong><span id="stat-overdue-amount" class="sub"></span></div>
+      <div class="card"><label>GST input credit</label><strong id="stat-gst">—</strong></div>
+      <div class="card alert"><label>Needs review</label><strong id="stat-review">—</strong></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="block">
+        <h2>Top vendors by spend</h2>
+        <table id="top-vendors"><thead><tr><th>Vendor</th><th>Total</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="block">
+        <h2>Monthly spend</h2>
+        <div id="monthly-chart" class="bars"></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Recent invoices</h2>
+      <table id="recent-invoices">
+        <thead><tr><th>Invoice #</th><th>Vendor</th><th>Date</th><th>Due</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============== INBOX ============== -->
+  <section id="tab-inbox" class="panel">
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search by invoice # or vendor" />
+      <select id="filter-status">
+        <option value="">All statuses</option>
+        <option value="PENDING">Pending</option>
+        <option value="EXTRACTED">Extracted</option>
+        <option value="NEEDS_REVIEW">Needs review</option>
+        <option value="APPROVED">Approved</option>
+        <option value="OCR_FAILED">OCR failed</option>
+      </select>
+      <select id="filter-payment">
+        <option value="">All payments</option>
+        <option value="UNPAID">Unpaid</option>
+        <option value="PARTIAL">Partial</option>
+        <option value="PAID">Paid</option>
+      </select>
+      <button id="refresh-inbox">Refresh</button>
+      <a href="/api/export/csv" class="btn-link">Export CSV</a>
+    </div>
+    <table id="inbox-table">
+      <thead><tr>
+        <th>Invoice #</th><th>Vendor</th><th>Date</th><th>Due</th>
+        <th>Total</th><th>Status</th><th>Payment</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- ============== VENDORS ============== -->
+  <section id="tab-vendors" class="panel">
+    <table id="vendors-table">
+      <thead><tr><th>Name</th><th>GSTIN</th><th>State</th><th>Terms</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- ============== UPLOAD ============== -->
+  <section id="tab-upload" class="panel">
+    <div class="upload-box" id="dropzone">
+      <p><strong>Drop invoice files here</strong> or click to choose</p>
+      <p class="sub">PDF, JPG, PNG. Files are OCR'd then sent through extraction.</p>
+      <input id="file-input" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp" hidden />
+    </div>
+    <div id="upload-log"></div>
+  </section>
+</main>
+
+<!-- ============== REVIEW MODAL ============== -->
+<div id="review-modal" class="modal hidden">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <h2 id="review-title">Review invoice</h2>
+      <button id="review-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="review-left">
+        <div id="review-preview" class="preview"></div>
+        <details>
+          <summary>Raw OCR text</summary>
+          <pre id="review-ocr"></pre>
+        </details>
+      </div>
+      <div class="review-right">
+        <div class="row">
+          <label>Vendor name<input id="f-vendor-name" /></label>
+          <label>Vendor GSTIN<input id="f-vendor-gstin" /></label>
+        </div>
+        <div class="row">
+          <label>Invoice #<input id="f-invoice-number" /></label>
+          <label>Invoice date<input id="f-invoice-date" type="date" /></label>
+          <label>Due date<input id="f-due-date" type="date" /></label>
+        </div>
+        <div class="row">
+          <label>Subtotal<input id="f-subtotal" type="number" step="0.01" /></label>
+          <label>CGST<input id="f-cgst" type="number" step="0.01" /></label>
+          <label>SGST<input id="f-sgst" type="number" step="0.01" /></label>
+          <label>IGST<input id="f-igst" type="number" step="0.01" /></label>
+          <label>Total<input id="f-total" type="number" step="0.01" /></label>
+        </div>
+        <div class="row">
+          <label>Status
+            <select id="f-status">
+              <option>PENDING</option><option>EXTRACTED</option>
+              <option>NEEDS_REVIEW</option><option>APPROVED</option>
+              <option>OCR_FAILED</option>
+            </select>
+          </label>
+          <label>Payment status
+            <select id="f-payment-status">
+              <option>UNPAID</option><option>PARTIAL</option><option>PAID</option>
+            </select>
+          </label>
+          <label>Paid amount<input id="f-paid-amount" type="number" step="0.01" /></label>
+        </div>
+
+        <h3>Line items</h3>
+        <table id="lineitems-table">
+          <thead><tr>
+            <th>Description</th><th>HSN</th><th>Qty</th><th>Rate</th>
+            <th>GST%</th><th>Total</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <button id="add-line">+ Add line</button>
+
+        <label>Review notes<textarea id="f-notes" rows="2"></textarea></label>
+
+        <div class="actions">
+          <button id="save-invoice" class="primary">Save</button>
+          <button id="approve-invoice" class="primary">Save &amp; Approve</button>
+          <button id="delete-invoice" class="danger">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/app.js"></script>
+</body>
+</html>

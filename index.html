@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SME Smart Invoicer</title>
+<style>
+  :root {
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --accent: #1d4ed8;
+    --accent-soft: #dbeafe;
+    --green: #16a34a;
+    --green-soft: #dcfce7;
+    --amber: #d97706;
+    --amber-soft: #fef3c7;
+    --red: #dc2626;
+    --red-soft: #fee2e2;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.04);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { background: white; border-bottom: 1px solid var(--border); padding: 16px 32px;
+           display: flex; justify-content: space-between; align-items: center; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  main { max-width: 1280px; margin: 0 auto; padding: 24px 32px; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+          padding: 16px 20px; box-shadow: var(--shadow); }
+  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase;
+                 letter-spacing: 0.04em; font-weight: 600; }
+  .card .value { font-size: 24px; font-weight: 600; margin-top: 6px; }
+  .card .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+           box-shadow: var(--shadow); overflow: hidden; }
+  .panel h2 { margin: 0; padding: 16px 20px; border-bottom: 1px solid var(--border);
+              font-size: 15px; font-weight: 600; }
+  .panel .body { padding: 16px 20px; }
+
+  .upload { border: 2px dashed var(--border); border-radius: 10px; padding: 24px;
+            text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .upload:hover, .upload.drag { border-color: var(--accent); background: var(--accent-soft); }
+  .upload input { display: none; }
+  .upload .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .upload-status { margin-top: 12px; font-size: 13px; color: var(--muted); min-height: 16px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase;
+       letter-spacing: 0.04em; background: #fafbfd; }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px;
+           font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .badge.extracted { background: var(--accent-soft); color: var(--accent); }
+  .badge.approved  { background: var(--green-soft);  color: var(--green); }
+  .badge.review    { background: var(--amber-soft);  color: var(--amber); }
+  .badge.pending, .badge.processing { background: #f1f5f9; color: var(--muted); }
+  .badge.failed    { background: var(--red-soft);    color: var(--red); }
+  .badge.paid      { background: var(--green-soft);  color: var(--green); }
+  .badge.unpaid    { background: #f1f5f9;            color: var(--muted); }
+
+  button { background: var(--accent); color: white; border: 0; border-radius: 8px;
+           padding: 8px 14px; font-weight: 500; font-size: 13px; cursor: pointer; }
+  button:hover { filter: brightness(0.95); }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.4);
+              z-index: 10; align-items: center; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: white; border-radius: 12px; width: min(960px, 92vw); max-height: 88vh;
+           overflow: auto; box-shadow: 0 20px 60px rgba(15,23,42,0.2); }
+  .modal header { background: white; border-bottom: 1px solid var(--border); padding: 16px 24px;
+                  display: flex; justify-content: space-between; align-items: center; }
+  .modal .body { padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .modal img { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; }
+  .field-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; padding: 6px 0;
+               border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+  .field-row .k { color: var(--muted); }
+  .close { background: transparent; color: var(--muted); border: 0; font-size: 22px; cursor: pointer; }
+
+  .empty { padding: 32px; text-align: center; color: var(--muted); font-size: 14px; }
+  .row-clickable { cursor: pointer; }
+  .row-clickable:hover { background: #f8fafc; }
+
+  @media (max-width: 900px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .modal .body { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>SME Smart Invoicer</h1>
+    <div class="sub">AI-powered invoice intake for micro-SMEs</div>
+  </div>
+  <button class="ghost" id="refresh-btn">Refresh</button>
+</header>
+
+<main>
+  <!-- Dashboard cards -->
+  <div class="cards" id="cards">
+    <div class="card"><div class="label">Total Invoices</div><div class="value" id="c-total">—</div></div>
+    <div class="card"><div class="label">Payable</div><div class="value" id="c-payable">—</div>
+                      <div class="sub" id="c-payable-sub">unpaid invoices</div></div>
+    <div class="card"><div class="label">GST Input Credit</div><div class="value" id="c-itc">—</div>
+                      <div class="sub">CGST + SGST + IGST</div></div>
+    <div class="card"><div class="label">Needs Review</div><div class="value" id="c-review">—</div>
+                      <div class="sub">Low-confidence extractions</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- Upload -->
+    <div class="panel">
+      <h2>Upload Invoice</h2>
+      <div class="body">
+        <label class="upload" id="dropzone">
+          <input type="file" id="file-input" accept="image/*,.pdf" multiple />
+          <div><strong>Click to upload</strong> or drop files here</div>
+          <div class="hint">PNG, JPG, PDF — multi-file OK. OCR runs in the background.</div>
+        </label>
+        <div class="upload-status" id="upload-status"></div>
+      </div>
+    </div>
+
+    <!-- Top vendors -->
+    <div class="panel">
+      <h2>Top Vendors by Spend</h2>
+      <table id="vendors-table">
+        <thead><tr><th>Vendor</th><th>GSTIN</th><th class="num">Invoices</th><th class="num">Spend</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Invoice list -->
+  <div class="panel">
+    <h2>Invoices</h2>
+    <table id="invoices-table">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th>Invoice #</th>
+          <th>Date</th>
+          <th>Due</th>
+          <th>Status</th>
+          <th>Payment</th>
+          <th class="num">Total</th>
+          <th class="num">Confidence</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty" id="invoices-empty" style="display:none">No invoices yet — upload one above or run <code>python seed.py</code>.</div>
+  </div>
+</main>
+
+<!-- Detail modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <header>
+      <div>
+        <div style="font-weight:600" id="m-title">Invoice</div>
+        <div class="sub" style="color:var(--muted); font-size:12px" id="m-sub">—</div>
+      </div>
+      <button class="close" id="m-close">×</button>
+    </header>
+    <div class="body">
+      <div>
+        <img id="m-img" alt="Invoice preview" />
+      </div>
+      <div>
+        <div id="m-fields"></div>
+        <h3 style="margin-top:20px; font-size:14px;">Line Items</h3>
+        <table>
+          <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">GST%</th><th class="num">Total</th></tr></thead>
+          <tbody id="m-items"></tbody>
+        </table>
+        <div style="margin-top:20px; display:flex; gap:8px;">
+          <button id="m-pay">Mark as Paid</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const fmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
+const fmtNum = (n) => (n == null ? "—" : fmt.format(n));
+const escapeHtml = (s) => (s == null ? "" : String(s).replace(/[&<>"']/g, (c) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+})[c]));
+
+const badgeFor = (status) => {
+  const cls = ({
+    EXTRACTED: "extracted", APPROVED: "approved", NEEDS_REVIEW: "review",
+    PENDING: "pending", PROCESSING: "processing", OCR_FAILED: "failed"
+  })[status] || "pending";
+  return `<span class="badge ${cls}">${status || "—"}</span>`;
+};
+const payBadge = (s) => `<span class="badge ${s === "PAID" ? "paid" : "unpaid"}">${s || "UNPAID"}</span>`;
+
+async function fetchJSON(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+async function loadDashboard() {
+  const d = await fetchJSON("/api/dashboard");
+  document.getElementById("c-total").textContent = d.total_invoices || 0;
+  document.getElementById("c-payable").textContent = fmtNum(d.payable_total);
+  document.getElementById("c-payable-sub").textContent = `${d.unpaid_count || 0} unpaid invoices`;
+  document.getElementById("c-itc").textContent = fmtNum(d.itc_accrued);
+  document.getElementById("c-review").textContent = d.needs_review || 0;
+}
+
+async function loadVendors() {
+  const { vendors } = await fetchJSON("/api/vendors");
+  const tbody = document.querySelector("#vendors-table tbody");
+  if (!vendors.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">No vendors yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = vendors.slice(0, 5).map(v => `
+    <tr>
+      <td>${escapeHtml(v.name)}</td>
+      <td><code style="font-size:12px">${escapeHtml(v.gstin) || "—"}</code></td>
+      <td class="num">${v.invoice_count}</td>
+      <td class="num">${fmtNum(v.total_spend)}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadInvoices() {
+  const { invoices } = await fetchJSON("/api/invoices");
+  const tbody = document.querySelector("#invoices-table tbody");
+  const empty = document.getElementById("invoices-empty");
+  if (!invoices.length) {
+    tbody.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+  tbody.innerHTML = invoices.map(i => `
+    <tr class="row-clickable" data-id="${i.id}">
+      <td>${escapeHtml(i.vendor_name) || "<em style='color:#94a3b8'>processing…</em>"}</td>
+      <td>${escapeHtml(i.invoice_number) || "—"}</td>
+      <td>${escapeHtml(i.invoice_date) || "—"}</td>
+      <td>${escapeHtml(i.due_date) || "—"}</td>
+      <td>${badgeFor(i.status)}</td>
+      <td>${payBadge(i.payment_status)}</td>
+      <td class="num">${fmtNum(i.total)}</td>
+      <td class="num">${i.confidence != null ? Math.round(i.confidence * 100) + "%" : "—"}</td>
+    </tr>
+  `).join("");
+  tbody.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => openInvoice(tr.dataset.id));
+  });
+}
+
+async function refresh() {
+  try {
+    await Promise.all([loadDashboard(), loadVendors(), loadInvoices()]);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ---------- Upload ----------
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("file-input");
+const statusEl = document.getElementById("upload-status");
+
+fileInput.addEventListener("change", () => handleFiles(fileInput.files));
+["dragenter", "dragover"].forEach(ev => dropzone.addEventListener(ev, (e) => {
+  e.preventDefault(); dropzone.classList.add("drag");
+}));
+["dragleave", "drop"].forEach(ev => dropzone.addEventListener(ev, (e) => {
+  e.preventDefault(); dropzone.classList.remove("drag");
+}));
+dropzone.addEventListener("drop", (e) => handleFiles(e.dataTransfer.files));
+
+async function handleFiles(files) {
+  if (!files || !files.length) return;
+  const ids = [];
+  for (const f of files) {
+    statusEl.textContent = `Uploading ${f.name}…`;
+    const form = new FormData();
+    form.append("file", f);
+    try {
+      const res = await fetchJSON("/api/invoices/upload", { method: "POST", body: form });
+      ids.push(res.invoice_id);
+      statusEl.textContent = res.duplicate
+        ? `${f.name}: duplicate (already on file)`
+        : `${f.name}: uploaded, OCR running…`;
+    } catch (err) {
+      statusEl.textContent = `${f.name}: failed — ${err.message}`;
+    }
+  }
+  await refresh();
+  // Poll until terminal status
+  pollStatuses(ids);
+}
+
+async function pollStatuses(ids) {
+  const remaining = new Set(ids);
+  const terminal = new Set(["EXTRACTED", "NEEDS_REVIEW", "APPROVED", "OCR_FAILED"]);
+  let ticks = 0;
+  while (remaining.size && ticks < 40) {
+    await new Promise(r => setTimeout(r, 800));
+    for (const id of [...remaining]) {
+      try {
+        const s = await fetchJSON(`/api/invoices/${id}/status`);
+        if (terminal.has(s.status)) remaining.delete(id);
+      } catch { remaining.delete(id); }
+    }
+    await refresh();
+    ticks++;
+  }
+  statusEl.textContent = "";
+}
+
+// ---------- Detail modal ----------
+const modal = document.getElementById("modal");
+document.getElementById("m-close").addEventListener("click", () => modal.classList.remove("open"));
+modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("open"); });
+
+let currentInvoiceId = null;
+
+async function openInvoice(id) {
+  currentInvoiceId = id;
+  const inv = await fetchJSON(`/api/invoices/${id}`);
+  document.getElementById("m-title").textContent = inv.vendor_name || "Invoice";
+  document.getElementById("m-sub").textContent = `${inv.invoice_number || "—"} · ${inv.invoice_date || "—"}`;
+  document.getElementById("m-img").src = inv.file_path || "";
+
+  const fields = [
+    ["Vendor",         inv.vendor_name],
+    ["GSTIN",          inv.vendor_gstin],
+    ["Invoice #",      inv.invoice_number],
+    ["Invoice Date",   inv.invoice_date],
+    ["Due Date",       inv.due_date],
+    ["Place of Supply", inv.place_of_supply],
+    ["Subtotal",       fmtNum(inv.subtotal)],
+    ["CGST",           fmtNum(inv.cgst)],
+    ["SGST",           fmtNum(inv.sgst)],
+    ["IGST",           fmtNum(inv.igst)],
+    ["Total",          `<strong>${fmtNum(inv.total)}</strong>`],
+    ["Status",         badgeFor(inv.status)],
+    ["Payment",        payBadge(inv.payment_status)],
+    ["Confidence",     inv.confidence != null ? Math.round(inv.confidence * 100) + "%" : "—"],
+  ];
+  document.getElementById("m-fields").innerHTML = fields.map(([k, v]) =>
+    `<div class="field-row"><div class="k">${k}</div><div>${v == null || v === "" ? "—" : v}</div></div>`
+  ).join("");
+
+  const items = inv.line_items || [];
+  document.getElementById("m-items").innerHTML = items.length
+    ? items.map(li => `
+        <tr>
+          <td>${escapeHtml(li.description)}</td>
+          <td class="num">${li.quantity ?? "—"}</td>
+          <td class="num">${fmtNum(li.rate)}</td>
+          <td class="num">${li.gst_rate != null ? li.gst_rate + "%" : "—"}</td>
+          <td class="num">${fmtNum(li.total)}</td>
+        </tr>`).join("")
+    : `<tr><td colspan="5" class="empty">No line items extracted.</td></tr>`;
+
+  modal.classList.add("open");
+}
+
+document.getElementById("m-pay").addEventListener("click", async () => {
+  if (!currentInvoiceId) return;
+  await fetchJSON(`/api/invoices/${currentInvoiceId}/pay`, { method: "POST" });
+  modal.classList.remove("open");
+  refresh();
+});
+
+document.getElementById("refresh-btn").addEventListener("click", refresh);
+
+refresh();
+</script>
+
+</body>
+</html>
